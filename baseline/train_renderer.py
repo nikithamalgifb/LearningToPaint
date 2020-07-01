@@ -12,6 +12,12 @@ from Renderer.stroke_gen import *
 #writer = TensorBoard("../train_log/")
 import torch.optim as optim
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--debug', metavar='fn', default="", help="Dump outputs into file")
+parser.add_argument('--script', default=False, help="Script the model")
+args = parser.parse_args()
+
 torch.manual_seed(1337)
 np.random.seed(1337)
 torch.backends.cudnn.deterministic = True
@@ -19,6 +25,8 @@ torch.backends.cudnn.benchmark = False
 
 criterion = nn.MSELoss()
 net = FCN()
+if args.script:
+    net = torch.jit.script(net)
 optimizer = optim.Adam(net.parameters(), lr=3e-6)
 batch_size = 64
 
@@ -40,11 +48,6 @@ def load_weights():
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     model_dict.update(pretrained_dict)
     net.load_state_dict(model_dict)
-
-dump_outputs = ""
-if len(sys.argv) > 2:
-    if sys.argv[1] == "--debug":
-        dump_outputs = sys.argv[2]
 
 #load_weights()
 while step < 100:
@@ -91,5 +94,5 @@ while step < 100:
         save_model()
     step += 1
 
-if dump_outputs:
-    torch.save(gen, dump_outputs)
+if args.debug:
+    torch.save(gen, args.debug)
