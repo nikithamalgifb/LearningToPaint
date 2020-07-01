@@ -1,6 +1,7 @@
 import cv2
 import torch
 import numpy as np
+import sys
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,6 +11,11 @@ from Renderer.stroke_gen import *
 
 #writer = TensorBoard("../train_log/")
 import torch.optim as optim
+
+torch.manual_seed(1337)
+np.random.seed(1337)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 criterion = nn.MSELoss()
 net = FCN()
@@ -35,9 +41,13 @@ def load_weights():
     model_dict.update(pretrained_dict)
     net.load_state_dict(model_dict)
 
+dump_outputs = ""
+if len(sys.argv) > 2:
+    if sys.argv[1] == "--debug":
+        dump_outputs = sys.argv[2]
 
 #load_weights()
-while step < 500000:
+while step < 100:
     net.train()
     train_batch = []
     ground_truth = []
@@ -80,3 +90,6 @@ while step < 500000:
     if step % 1000 == 0:
         save_model()
     step += 1
+
+if dump_outputs:
+    torch.save(gen, dump_outputs)
