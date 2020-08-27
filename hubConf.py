@@ -31,60 +31,49 @@ class Model:
             'script': False,
             })
 
+        train_batch = []
+        ground_truth = []
+        for i in range(self.opt.batch_size):
+            f = np.random.uniform(0, 1, 10)
+            train_batch.append(f)
+            ground_truth.append(draw(f))
+
+        train_batch = torch.tensor(train_batch).float()
+        ground_truth = torch.tensor(ground_truth).float()
+
         if self.jit:
             net = torch.jit.script(net)
-        self.module = net
+        if use_cuda:
+            net = net.to(self.device)
+            train_batch = train_batch.to(self.device)
+            ground_truth = ground_truth.to(self.device)
 
+        self.module = net
+        self.example_inputs = (train_batch,ground_truth)
+        self.optimizer = optim.Adam(self.module.parameters(), lr=3e-6)
 
     def get_module(self):
-        return self.module
+        return self.module,self.example_inputs
 
     def train(self, niter=1):
         self.module.train()
-        self.train_batch = []
-        self.ground_truth = []
-        for i in range(self.opt.batch_size):
-            f = np.random.uniform(0, 1, 10)
-            self.train_batch.append(f)
-            self.ground_truth.append(draw(f))
-
-        self.train_batch = torch.tensor(self.train_batch).float()
-        self.ground_truth = torch.tensor(self.ground_truth).float()
-
-        if use_cuda:
-            self.module = self.module.cuda()
-            self.train_batch = self.train_batch.cuda()
-            self.ground_truth = self.ground_truth.cuda()
-        self.gen = self.module(self.train_batch)
-        optimizer = optim.Adam(self.module.parameters(), lr=3e-6)
 
         for _ in range(niter):
-            optimizer.zero_grad()
-            loss = self.criterion(self.gen, self.ground_truth)
+            gen = self.module(self.example_inputs[0])
+            self.optimizer.zero_grad()
+            loss = self.criterion(gen, self.example_inputs[1])
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
             print(self.step, loss.item())
-            if self.step < 200000:
-                lr = 1e-4
-            elif self.step < 400000:
-                lr = 1e-5
-            else:
-                lr = 1e-6
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = lr
 
     def eval(self, niter=1):
         self.module.eval()
         for _ in range(niter):
-            self.gen = self.module(self.train_batch)
-            loss = self.criterion(self.gen, self.ground_truth)
-            for i in range(32):
-                G = self.gen[i].cpu().data.numpy()
-                GT = self.ground_truth[i].cpu().data.numpy()
+            self.module(self.example_inputs[0])
 
 if __name__ == '__main__':
     m = Model(device='cuda', jit=False)
-    module = m.get_module()
+    module,example_inputs = m.get_module()
     while m.step < 100:
         m.train(niter=1)
         if m.step%100 == 0:
