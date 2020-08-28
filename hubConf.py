@@ -16,7 +16,6 @@ torch.manual_seed(1337)
 np.random.seed(1337)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-use_cuda = torch.cuda.is_available()
 
 class Model:
     def __init__(self, device=None, jit=False):
@@ -43,10 +42,10 @@ class Model:
 
         if self.jit:
             net = torch.jit.script(net)
-        if use_cuda:
-            net = net.to(self.device)
-            train_batch = train_batch.to(self.device)
-            ground_truth = ground_truth.to(self.device)
+
+        net = net.to(self.device)
+        train_batch = train_batch.to(self.device)
+        ground_truth = ground_truth.to(self.device)
 
         self.module = net
         self.example_inputs = (train_batch,ground_truth)
@@ -64,7 +63,6 @@ class Model:
             loss = self.criterion(gen, self.example_inputs[1])
             loss.backward()
             self.optimizer.step()
-            print(self.step, loss.item())
 
     def eval(self, niter=1):
         self.module.eval()
@@ -72,7 +70,7 @@ class Model:
             self.module(self.example_inputs[0])
 
 if __name__ == '__main__':
-    m = Model(device='cuda', jit=False)
+    m = Model(device='cpu', jit=False)
     module,example_inputs = m.get_module()
     while m.step < 100:
         m.train(niter=1)
