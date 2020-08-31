@@ -31,14 +31,14 @@ class Model:
             })
 
         train_batch = []
-        ground_truth = []
+        self.ground_truth = []
         for i in range(self.opt.batch_size):
             f = np.random.uniform(0, 1, 10)
             train_batch.append(f)
-            ground_truth.append(draw(f))
+            self.ground_truth.append(draw(f))
 
         train_batch = torch.tensor(train_batch).float()
-        ground_truth = torch.tensor(ground_truth).float()
+        self.ground_truth = torch.tensor(self.ground_truth).float()
 
         if self.jit:
             net = torch.jit.script(net)
@@ -48,26 +48,26 @@ class Model:
         ground_truth = ground_truth.to(self.device)
 
         self.module = net
-        self.example_inputs = (train_batch,ground_truth)
+        self.example_inputs = train_batch
         self.optimizer = optim.Adam(self.module.parameters(), lr=3e-6)
 
     def get_module(self):
-        return self.module,self.example_inputs
+        return self.module,[self.example_inputs]
 
     def train(self, niter=1):
         self.module.train()
 
         for _ in range(niter):
-            gen = self.module(self.example_inputs[0])
+            gen = self.module(self.example_inputs)
             self.optimizer.zero_grad()
-            loss = self.criterion(gen, self.example_inputs[1])
+            loss = self.criterion(gen, self.ground_truth)
             loss.backward()
             self.optimizer.step()
 
     def eval(self, niter=1):
         self.module.eval()
         for _ in range(niter):
-            self.module(self.example_inputs[0])
+            self.module(self.example_inputs)
 
 if __name__ == '__main__':
     m = Model(device='cpu', jit=False)
