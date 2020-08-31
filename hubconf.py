@@ -45,7 +45,7 @@ class Model:
 
         net = net.to(self.device)
         train_batch = train_batch.to(self.device)
-        ground_truth = ground_truth.to(self.device)
+        self.ground_truth = self.ground_truth.to(self.device)
 
         self.module = net
         self.example_inputs = train_batch
